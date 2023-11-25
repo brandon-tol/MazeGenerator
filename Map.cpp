@@ -2,24 +2,18 @@
 #include "Stack.h"
 #include "rng.h"
 #include <iostream>
+#define VISITED_0 (unsigned short)0b1000000000000000
+#define WALL_0 (unsigned char)0b10000000
 
 Map::Map(unsigned size) : Map(size, size) { };
 
 Map::Map(unsigned len, unsigned ht) : len(len), ht(ht), map(new Tile[len * ht]) {
     for(unsigned i = 0; i < len; i++) {
         for(unsigned j = 0; j < ht; j++) {
-            at({i, j})->wall_data = 0b1111;
+            at({i, j})->wall_data = 0b11111111;
         }
     }
     init();
-};
-
-Map::Map(unsigned size, bool) : len(size), ht(size), map(new Tile[len * ht]) {
-    for(unsigned i = 0; i < len; i++) {
-        for(unsigned j = 0; j < ht; j++) {
-            at({i, j})->wall_data = 0b0000;
-        }
-    }
 };
 
 Tile* Map::at(Address a) {
@@ -27,34 +21,43 @@ Tile* Map::at(Address a) {
 };
 
 void Map::visit(Address a) {
-    if(!isEdge(a, LEFT)) at({a, LEFT})->wall_data |= 0b01000000;
-    if(!isEdge(a, RIGHT)) at({a, RIGHT})->wall_data |= 0b10000000;
-    if(!isEdge(a, DOWN)) at({a, DOWN})->wall_data |= 0b00100000;
-    if(!isEdge(a, UP)) at({a, UP})->wall_data |= 0b00010000;
+    for(unsigned char i = 0; i < 8; i++) {
+        if(!isEdge(a, (Direction)i)) {
+            at({a, (Direction)i})->wall_data |= (VISITED_0 >> i);
+        }
+    }
 };
 
 bool Map::visited(Address a, Direction d) {
-    return at(a)->wall_data & ((unsigned char)0b10000000 >> (char)d);
+    return at(a)->wall_data & (VISITED_0 >> (
+        (d < 4) ?
+        d + 4 :
+        d - 4
+    ));
 };
 
 bool Map::isEdge(Address a, Direction d) {
     switch(d) {
-        case LEFT:
-        return a.x == 0;
-        case RIGHT:
-        return a.x == len - 1;
-        case UP:
-        return a.y == ht - 1;
-        case DOWN:
-        return a.y == 0;
+        case 0: return a.x == 0 || a.y == ht - 1;
+        case 1: return a.y == ht - 1;
+        case 2: return a.y == ht - 1 || a.x == len - 1;
+        case 3: return a.x == len - 1;
+        case 4: return a.x == len - 1 || a.y == 0;
+        case 5: return a.y == 0;
+        case 6: return a.y == 0 || a.x == 0;
+        case 7: return a.x == 0;
     }
-    throw std::runtime_error("Illegal Direction Exception.");
+    return false;
 };
 
 void Map::removeWall(Address a, Direction d) {
-    at(a)->wall_data &= ((signed char)0b11110111 >> (int)d);
+    at(a)->wall_data &= (~(signed short)WALL_0 >> (unsigned char)d);
     Address b = {a, d};
-    at(b)->wall_data &= (((signed char)0b11110111 >> (int)d) ^ (((int)d <= RIGHT) ? 0b1100 : 0b11));
+    at(b)->wall_data &= ((~(signed short)WALL_0 >> (
+        (d < 4) ?
+        d + 4 :
+        d - 4
+    )));
 };
 
 void Map::init() {
@@ -63,12 +66,11 @@ void Map::init() {
     Stack* stack = new Stack(initial);
     while(!stack->isEmpty()) {
         Address current = stack->pop();
-        Direction hat[4];
+        Direction hat[8];
         char hatsize = 0;
-        if(!visited(current, LEFT) && !isEdge(current, LEFT)) hat[hatsize++] = LEFT;
-        if(!visited(current, RIGHT) && !isEdge(current, RIGHT)) hat[hatsize++] = RIGHT;
-        if(!visited(current, UP) && !isEdge(current, UP)) hat[hatsize++] = UP;
-        if(!visited(current, DOWN) && !isEdge(current, DOWN)) hat[hatsize++] = DOWN;
+        for(unsigned char i = 0; i < 8; i++) {
+            if(!visited(current, (Direction)i) && !isEdge(current, (Direction)i)) hat[hatsize++] = (Direction)i;
+        }
         if(hatsize <= 0) continue;
         stack->push(current);
         Direction toVisit = hat[rng::getRandomInt(0, hatsize - 1)];
@@ -81,7 +83,7 @@ void Map::init() {
 };
 
 void Map::print() {
-    for(int i = ht - 1; i >= 0; i--) {
+    for(unsigned i = ht - 1; i != -1; i--) {
         for(unsigned j = 0; j < len; j++)
             at({j, i})->printLine1();
         std::cout << std::endl;
@@ -93,3 +95,6 @@ void Map::print() {
         std::cout << std::endl;
     }       
 };
+
+#undef VISITED_0
+#undef WALL_0

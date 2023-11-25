@@ -17,6 +17,5 @@ class Map {
     public:
     Map(unsigned, unsigned);
     Map(unsigned);
-    Map(unsigned size, bool);
     void print();
 };
