@@ -1,6 +1,6 @@
 #include "Address.h"
 
-Address::Address(Address a, Direction d) : 
+Address::Address(Address a, unsigned char d) : 
 x(
     d >= 2 && d <= 4 ?
     a.x + 1 :

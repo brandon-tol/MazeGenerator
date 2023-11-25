@@ -5,9 +5,9 @@
 #define VISITED_0 (unsigned short)0b1000000000000000
 #define WALL_0 (unsigned char)0b10000000
 
-Map::Map(unsigned size) : Map(size, size) { };
+Map::Map(unsigned size, bool diagonals) : Map(size, size, diagonals) { };
 
-Map::Map(unsigned len, unsigned ht) : len(len), ht(ht), map(new Tile[len * ht]) {
+Map::Map(unsigned len, unsigned ht, bool diagonals) : len(len), ht(ht), map(new Tile[len * ht]), withDiagonals(diagonals) {
     for(unsigned i = 0; i < len; i++) {
         for(unsigned j = 0; j < ht; j++) {
             at({i, j})->wall_data = 0b11111111;
@@ -22,22 +22,23 @@ Tile* Map::at(Address a) {
 
 void Map::visit(Address a) {
     for(unsigned char i = 0; i < 8; i++) {
-        if(!isEdge(a, (Direction)i)) {
-            at({a, (Direction)i})->wall_data |= (VISITED_0 >> i);
+        if(!withDiagonals && i % 2 == 0) continue;
+        if(!isEdge(a, i)) {
+            at({a, i})->wall_data |= (VISITED_0 >> i);
         }
     }
 };
 
-bool Map::visited(Address a, Direction d) {
+bool Map::visited(Address a, unsigned char direction) {
     return at(a)->wall_data & (VISITED_0 >> (
-        (d < 4) ?
-        d + 4 :
-        d - 4
+        (direction < 4) ?
+        direction + 4 :
+        direction - 4
     ));
 };
 
-bool Map::isEdge(Address a, Direction d) {
-    switch(d) {
+bool Map::isEdge(Address a, unsigned char direction) {
+    switch(direction) {
         case 0: return a.x == 0 || a.y == ht - 1;
         case 1: return a.y == ht - 1;
         case 2: return a.y == ht - 1 || a.x == len - 1;
@@ -50,13 +51,13 @@ bool Map::isEdge(Address a, Direction d) {
     return false;
 };
 
-void Map::removeWall(Address a, Direction d) {
-    at(a)->wall_data &= (~(signed short)WALL_0 >> (unsigned char)d);
-    Address b = {a, d};
+void Map::removeWall(Address a, unsigned char direction) {
+    at(a)->wall_data &= (~(signed short)WALL_0 >> (unsigned char)direction);
+    Address b = {a, direction};
     at(b)->wall_data &= ((~(signed short)WALL_0 >> (
-        (d < 4) ?
-        d + 4 :
-        d - 4
+        (direction < 4) ?
+        direction + 4 :
+        direction - 4
     )));
 };
 
@@ -66,16 +67,17 @@ void Map::init() {
     Stack* stack = new Stack(initial);
     while(!stack->isEmpty()) {
         Address current = stack->pop();
-        Direction hat[8];
+        unsigned char hat[8];
         char hatsize = 0;
         for(unsigned char i = 0; i < 8; i++) {
-            if(!visited(current, (Direction)i) && !isEdge(current, (Direction)i)) hat[hatsize++] = (Direction)i;
+            if(!withDiagonals && i % 2 == 0) continue;
+            if(!visited(current, i) && !isEdge(current, i)) hat[hatsize++] = i;
         }
         if(hatsize <= 0) continue;
         stack->push(current);
-        Direction toVisit = hat[rng::getRandomInt(0, hatsize - 1)];
-        removeWall(current, toVisit);
-        Address neighbour = {current, toVisit};
+        unsigned char directionToBreak = hat[rng::getRandomInt(0, hatsize - 1)];
+        removeWall(current, directionToBreak);
+        Address neighbour = {current, directionToBreak};
         visit(neighbour);
         stack->push(neighbour);
     }

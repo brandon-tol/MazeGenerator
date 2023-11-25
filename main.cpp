@@ -3,8 +3,7 @@
 
 int main(int argc, char const *argv[])
 {
-    Map *m = new Map(100);
+    Map *m = new Map(50, false);
     m->print();
-    // std::cout << (Direction)(unsigned char)11;
     return 0;
 }

@@ -1,6 +1,5 @@
 #pragma once
 #include <random>
-#include "Direction.h"
 
 class rng {
     public:
